@@ -1,5 +1,6 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { ControlStatus, Prisma } from '@prisma/client';
+import { AuditAction, AuditEntityType, ControlStatus, Prisma } from '@prisma/client';
+import { AuditService } from '../audit/audit.service';
 import { ReadinessByCategoryDto } from '../nis2/dto/readiness-by-category.dto';
 import { ReadinessBreakdownDto, ReadinessByStatusDto, ReadinessResponseDto } from '../nis2/dto/readiness-response.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -7,28 +8,43 @@ import { CreateControlDto } from './dto/create-control.dto';
 
 @Injectable()
 export class ControlsService {
-    constructor(private readonly prisma: PrismaService) {
+    constructor(
+      private readonly prisma: PrismaService,
+      private readonly audit: AuditService,
+    ) {
     }
 
-    async create(dto: CreateControlDto) {
+    async create(dto: CreateControlDto, actorId?: string) {
         try {
-            return await this.prisma.control.create({
-                data: {
-                    code: dto.code,
-                    title: dto.title,
-                    description: dto.description ?? null,
-                    status: dto.status ?? ControlStatus.NOT_STARTED,
-                    ownerId: dto.ownerId ?? null,
-                },
+            return await this.prisma.$transaction(async (tx) => {
+                const control = await tx.control.create({
+                    data: {
+                        code: dto.code,
+                        title: dto.title,
+                        description: dto.description ?? null,
+                        status: dto.status ?? ControlStatus.NOT_STARTED,
+                        ownerId: dto.ownerId ?? null,
+                    },
+                });
+
+                await this.audit.logWith(tx, {
+                    action: AuditAction.CREATED,
+                    entityType: AuditEntityType.CONTROL,
+                    entityId: control.id,
+                    controlId: control.id,
+                    actorId: actorId ?? null,
+                    meta: {
+                        snapshot: { code: control.code, title: control.title, status: control.status },
+                    },
+                });
+
+                return control;
             });
-        } catch (e) {
-            if (
-              e instanceof Prisma.PrismaClientKnownRequestError &&
-              e.code === 'P2002'
-            ) {
+        } catch (error) {
+            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
                 throw new ConflictException('Control code already exists');
             }
-            throw e;
+            throw error;
         }
     }
 
@@ -57,17 +73,36 @@ export class ControlsService {
         return control;
     }
 
-    async updateStatus(id: string, status: ControlStatus) {
-        await this.findOne(id);
+    async updateStatus(id: string, status: ControlStatus, actorId?: string) {
+        return this.prisma.$transaction(async (tx) => {
+            const before = await tx.control.findUnique({
+                where: { id },
+                select: { id: true, status: true },
+            });
+            if (!before) throw new NotFoundException('Control not found');
 
-        return this.prisma.control.update({
-            where: { id },
-            data: { status },
-            include: {
-                owner: {
-                    select: { id: true, email: true, role: true },
-                },
-            },
+            const updated = await tx.control.update({
+                where: { id },
+                data: { status },
+                include: { owner: { select: { id: true, email: true, role: true } } },
+            });
+
+            if (before.status !== updated.status) {
+                await this.audit.logWith(tx, {
+                    action: AuditAction.STATUS_CHANGED,
+                    entityType: AuditEntityType.CONTROL,
+                    entityId: updated.id,
+                    controlId: updated.id,
+                    actorId: actorId ?? null,
+                    meta: {
+                        changes: {
+                            status: { from: before.status, to: updated.status },
+                        },
+                    },
+                });
+            }
+
+            return updated;
         });
     }
 
@@ -156,13 +191,8 @@ export class ControlsService {
 
         if (totalApplicable === 0) return 0;
 
-        // Gewichtung V1:
-        // implemented = 1.0
-        // inProgress  = 0.5
-        // notStarted  = 0.0
         const achieved = implemented * 1.0 + inProgress * 0.5;
 
-        // clamp: sicher ist sicher
         const raw = achieved / totalApplicable;
         return Math.max(0, Math.min(1, Number(raw.toFixed(4))));
     }
@@ -176,7 +206,6 @@ export class ControlsService {
             _count: { _all: true },
         });
 
-        // category -> counts map
         const byCategory = new Map<string, Record<ControlStatus, number>>();
 
         for (const row of grouped) {
@@ -224,7 +253,6 @@ export class ControlsService {
             });
         }
 
-        // Sortierung fürs Frontend: alphabetisch, "Uncategorized" ans Ende
         result.sort((a, b) => {
             if (a.category === 'Uncategorized') return 1;
             if (b.category === 'Uncategorized') return -1;
@@ -233,5 +261,25 @@ export class ControlsService {
 
         return result;
     }
-}
 
+    async getAuditForControl(controlId: string) {
+        return this.prisma.auditEvent.findMany({
+            where: { controlId },
+            orderBy: { createdAt: 'desc' },
+            take: 100,
+            select: {
+                id: true,
+                action: true,
+                entityType: true,
+                entityId: true,
+                meta: true,
+                createdAt: true,
+                actorId: true,
+                actor: {
+                    select: { id: true, email: true, role: true },
+                },
+            },
+        });
+    }
+
+}

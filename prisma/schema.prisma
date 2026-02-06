@@ -14,13 +14,14 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(uuid())
-  email        String    @unique
+  id           String       @id @default(uuid())
+  email        String       @unique
   passwordHash String
-  role         Role      @default(USER)
+  role         Role         @default(USER)
   controls     Control[]
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  auditEvents  AuditEvent[]
 }
 
 enum Role {
@@ -42,6 +43,7 @@ model Control {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   controlEvidences ControlEvidence[]
+  auditEvents      AuditEvent[]
 }
 
 enum ControlStatus {
@@ -67,4 +69,33 @@ model ControlEvidence {
 enum EvidenceType {
   NOTE
   LINK
+}
+
+model AuditEvent {
+  id         String          @id @default(uuid())
+  action     AuditAction
+  entityType AuditEntityType
+  entityId   String
+  controlId  String?
+  actorId    String?
+  actor      User?           @relation(fields: [actorId], references: [id])
+  meta       Json?
+  createdAt  DateTime        @default(now())
+  control    Control?        @relation(fields: [controlId], references: [id])
+
+  @@index([controlId, createdAt])
+  @@index([entityType, entityId, createdAt])
+  @@index([actorId, createdAt])
+}
+
+enum AuditEntityType {
+  CONTROL
+  EVIDENCE
+}
+
+enum AuditAction {
+  CREATED
+  STATUS_CHANGED
+  EVIDENCE_CREATED
+  EVIDENCE_DELETED
 }
