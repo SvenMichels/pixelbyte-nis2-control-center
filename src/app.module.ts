@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { ControlsModule } from './controls/controls.module';
 import { ControlsEvidenceModule } from './controls/evidence/controls-evidence.module';
@@ -31,6 +32,7 @@ import { UsersModule } from './users/users.module';
         DocsModule,
         Nis2Module,
         ControlsEvidenceModule,
+        AuditModule,
     ],
     controllers: [ AppController ],
     providers: [ AppService ],

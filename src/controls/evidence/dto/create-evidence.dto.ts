@@ -13,9 +13,9 @@ export class CreateEvidenceDto {
     @MaxLength(2000)
     note?: string;
 
-    @ApiPropertyOptional({ example: 'https://confluence.company.local/display/SEC/Access+Control+Policy' })
+    @ApiPropertyOptional()
     @IsOptional()
-    @IsUrl()
-    @MaxLength(2000)
+    @IsString()
+    @IsUrl({ require_protocol: true }, { message: 'link must be a valid URL with protocol (https://...)' })
     link?: string;
 }
