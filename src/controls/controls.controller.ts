@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/commo
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { Auth } from '../auth/decorators/auth.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ReadinessByCategoryDto } from '../nis2/dto/readiness-by-category.dto';
 import { ReadinessResponseDto } from '../nis2/dto/readiness-response.dto';
 import { ControlsService } from './controls.service';
@@ -42,14 +43,18 @@ export class ControlsController {
 
     @Post()
     @Auth(Role.ADMIN)
-    create(@Body() dto: CreateControlDto) {
-        return this.controls.create(dto);
+    create(@Body() dto: CreateControlDto, @CurrentUser() user: any) {
+        return this.controls.create(dto, user.id);
     }
 
     @Patch(':id/status')
     @Auth(Role.ADMIN, Role.SECURITY)
-    updateStatus(@Param('id') id: string, @Body() dto: UpdateControlStatusDto) {
-        return this.controls.updateStatus(id, dto.status);
+    updateStatus(
+      @Param('id') id: string,
+      @Body() dto: UpdateControlStatusDto,
+      @CurrentUser() user: any,
+    ) {
+        return this.controls.updateStatus(id, dto.status, user.id);
     }
 
     @Delete(':id')
@@ -57,4 +62,11 @@ export class ControlsController {
     remove(@Param('id') id: string) {
         return this.controls.remove(id);
     }
+
+    @Get(':id/audit')
+    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR)
+    getAudit(@Param('id') id: string) {
+        return this.controls.getAuditForControl(id);
+    }
+
 }

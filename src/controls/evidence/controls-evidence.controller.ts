@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { Auth } from '../../auth/decorators/auth.decorator';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { ControlsEvidenceService } from './controls-evidence.service';
 import { CreateEvidenceDto } from './dto/create-evidence.dto';
 
@@ -13,8 +14,12 @@ export class ControlsEvidenceController {
 
     @Post()
     @Auth(Role.ADMIN, Role.SECURITY)
-    create(@Param('id') controlId: string, @Body() dto: CreateEvidenceDto) {
-        return this.evidence.create(controlId, dto);
+    create(
+      @Param('id') controlId: string,
+      @Body() dto: CreateEvidenceDto,
+      @CurrentUser() user: any,
+    ) {
+        return this.evidence.create(controlId, dto, user.id);
     }
 
     @Get()
@@ -29,13 +34,17 @@ export class ControlsEvidenceController {
     remove(
       @Param('id') controlId: string,
       @Param('evidenceId') evidenceId: string,
+      @CurrentUser() user: any,
     ) {
-        return this.evidence.remove(controlId, evidenceId);
+        return this.evidence.remove(controlId, evidenceId, user.id);
     }
 
     @Delete()
     @Auth(Role.ADMIN, Role.SECURITY)
-    removeAll(@Param('id') controlId: string) {
-        return this.evidence.removeAll(controlId);
+    removeAll(
+      @Param('id') controlId: string,
+      @CurrentUser() user: any,
+    ) {
+        return this.evidence.removeAll(controlId, user.id);
     }
 }
