@@ -8,6 +8,7 @@ type AuditLogParams = {
     entityType: AuditEntityType;
     entityId: string;
     controlId?: string | null;
+    riskId?: string | null;
     actorId?: string | null;
     meta?: Prisma.InputJsonValue;
 };
@@ -24,6 +25,7 @@ export class AuditService {
                 entityType: params.entityType,
                 entityId: params.entityId,
                 controlId: params.controlId ?? null,
+                riskId: params.riskId ?? null,
                 actorId: params.actorId ?? null,
                 ...(params.meta !== undefined ? { meta: params.meta } : {}),
             },
@@ -37,6 +39,7 @@ export class AuditService {
                 entityType: params.entityType,
                 entityId: params.entityId,
                 controlId: params.controlId ?? null,
+                riskId: params.riskId ?? null,
                 actorId: params.actorId ?? null,
                 ...(params.meta !== undefined ? { meta: params.meta } : {}),
             },
@@ -48,6 +51,7 @@ export class AuditService {
 
         const baseWhere: Prisma.AuditEventWhereInput = {
             ...(query.controlId ? { controlId: query.controlId } : {}),
+            ...(query.riskId ? { riskId: query.riskId } : {}),
             ...(query.actorId ? { actorId: query.actorId } : {}),
             ...(query.entityType && query.entityId
               ? { entityType: query.entityType, entityId: query.entityId }
