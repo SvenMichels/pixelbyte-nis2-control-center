@@ -1,12 +1,18 @@
+﻿import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
-
-    const enableSwagger = process.env.NODE_ENV !== 'production';
+    app.use(helmet());
+    app.enableCors({
+        origin: process.env.CORS_ORIGIN ?? 'http://localhost:4200',
+        credentials: true,
+    });
+    app.use(cookieParser());
     app.useGlobalPipes(
       new ValidationPipe({
           whitelist: true,
@@ -15,8 +21,7 @@ async function bootstrap() {
       }),
     );
 
-
-    if (enableSwagger) {
+    if (process.env.NODE_ENV !== 'production') {
         const config = new DocumentBuilder()
           .setTitle('PixelByte NIS2 Compliance API')
           .setDescription('API documentation & test console')
@@ -26,14 +31,11 @@ async function bootstrap() {
             'bearer',
           )
           .build();
-
         const document = SwaggerModule.createDocument(app, config);
         SwaggerModule.setup('docs', app, document, {
             swaggerOptions: { persistAuthorization: true },
         });
     }
-
     await app.listen(process.env.PORT ?? 3000);
 }
-
 bootstrap();
