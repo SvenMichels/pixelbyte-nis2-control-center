@@ -19,6 +19,7 @@ model User {
   passwordHash String
   role         Role         @default(USER)
   controls     Control[]
+  risks        Risk[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
   auditEvents  AuditEvent[]
@@ -44,6 +45,7 @@ model Control {
   updatedAt        DateTime          @updatedAt
   controlEvidences ControlEvidence[]
   auditEvents      AuditEvent[]
+  risks            RiskControl[] // Many-to-Many relation
 }
 
 enum ControlStatus {
@@ -61,7 +63,7 @@ model ControlEvidence {
   link      String?
   createdAt DateTime     @default(now())
 
-  control Control @relation(fields: [controlId], references: [id], onDelete: Cascade)
+  control Control @relation(fields: [controlId], references: [id])
 
   @@index([controlId])
 }
@@ -77,13 +79,16 @@ model AuditEvent {
   entityType AuditEntityType
   entityId   String
   controlId  String?
+  riskId     String?
   actorId    String?
   actor      User?           @relation(fields: [actorId], references: [id])
   meta       Json?
   createdAt  DateTime        @default(now())
   control    Control?        @relation(fields: [controlId], references: [id])
+  risk       Risk?           @relation(fields: [riskId], references: [id])
 
   @@index([controlId, createdAt])
+  @@index([riskId, createdAt])
   @@index([entityType, entityId, createdAt])
   @@index([actorId, createdAt])
 }
@@ -91,6 +96,7 @@ model AuditEvent {
 enum AuditEntityType {
   CONTROL
   EVIDENCE
+  RISK
 }
 
 enum AuditAction {
@@ -98,4 +104,44 @@ enum AuditAction {
   STATUS_CHANGED
   EVIDENCE_CREATED
   EVIDENCE_DELETED
+  UPDATED
+  RISK_CONTROL_LINKED
+  RISK_CONTROL_UNLINKED
+}
+
+model Risk {
+  id          String        @id @default(uuid())
+  title       String
+  description String?
+  severity    Int           @default(1) // 1-5 scale
+  likelihood  Int           @default(1) // 1-5 scale
+  impact      Int           @default(1) // 1-5 scale
+  status      RiskStatus    @default(IDENTIFIED)
+  ownerId     String?
+  owner       User?         @relation(fields: [ownerId], references: [id])
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  auditEvents AuditEvent[]
+  controls    RiskControl[] // Many-to-Many relation
+}
+
+enum RiskStatus {
+  IDENTIFIED
+  ASSESSED
+  MITIGATED
+  ACCEPTED
+  CLOSED
+}
+
+model RiskControl {
+  riskId    String
+  controlId String
+  createdAt DateTime @default(now())
+
+  risk    Risk    @relation(fields: [riskId], references: [id], onDelete: Cascade)
+  control Control @relation(fields: [controlId], references: [id], onDelete: Cascade)
+
+  @@id([riskId, controlId])
+  @@index([riskId])
+  @@index([controlId])
 }

@@ -1,7 +1,11 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { seedAuditEvents } from './seed/audit.seed';
 import { seedControls } from './seed/controls.seed';
+import { seedControlEvidence } from './seed/evidence.seed';
+import { seedRiskControls } from './seed/risk-controls.seed';
+import { seedRisks } from './seed/risks.seed';
 import { seedUsers } from './seed/users.seed';
 
 async function seed() {
@@ -13,6 +17,18 @@ async function seed() {
 
     console.log('Seeding controls...');
     await seedControls(prisma);
+
+    console.log('Seeding risks...');
+    await seedRisks(prisma);
+
+    console.log('Seeding risk-control mappings...');
+    await seedRiskControls(prisma);
+
+    console.log('Seeding control evidence...');
+    await seedControlEvidence(prisma);
+
+    console.log('Seeding audit events...');
+    await seedAuditEvents(prisma);
 
     await app.close();
 }
