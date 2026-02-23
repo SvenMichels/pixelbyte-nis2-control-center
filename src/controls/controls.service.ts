@@ -5,6 +5,7 @@ import { ReadinessByCategoryDto } from '../nis2/dto/readiness-by-category.dto';
 import { ReadinessBreakdownDto, ReadinessByStatusDto, ReadinessResponseDto } from '../nis2/dto/readiness-response.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateControlDto } from './dto/create-control.dto';
+import { ControlsQueryDto } from './dto/controls-query.dto';
 
 @Injectable()
 export class ControlsService {
@@ -48,15 +49,88 @@ export class ControlsService {
         }
     }
 
-    findAll() {
+    findAll(query?: ControlsQueryDto) {
+        const take = query?.take ?? 50;
+        const skip = query?.skip;
+        const sortKey = query?.sortKey ?? 'code';
+        const sortDir = query?.sortDir === 'desc' ? 'desc' : 'asc';
+        const cursor = query?.cursor;
+
+        const where: Prisma.ControlWhereInput = {
+            ...(query?.status && query.status.length > 0 ? { status: { in: query.status } } : {}),
+            ...(query?.category ? { category: query.category } : {}),
+            ...(query?.owner
+              ? { owner: { email: { contains: query.owner, mode: 'insensitive' } } }
+              : {}),
+            ...(query?.search
+              ? {
+                  OR: [
+                      { code: { contains: query.search, mode: 'insensitive' } },
+                      { title: { contains: query.search, mode: 'insensitive' } },
+                  ],
+              }
+              : {}),
+        };
+
+        const orderBy: Prisma.ControlOrderByWithRelationInput[] =
+          sortKey === 'title'
+            ? [ { title: sortDir }, { code: 'asc' } ]
+            : sortKey === 'status'
+              ? [ { status: sortDir }, { code: 'asc' } ]
+              : sortKey === 'category'
+                ? [ { category: sortDir }, { code: 'asc' } ]
+                : [ { code: sortDir }, { id: sortDir } ];
+
+        const cursorFilter = cursor && sortKey === 'code'
+          ? this.buildCursorWhere(cursor, sortDir)
+          : null;
+
+        const finalWhere: Prisma.ControlWhereInput = cursorFilter
+          ? { AND: [ where, cursorFilter ] }
+          : where;
+
         return this.prisma.control.findMany({
-            orderBy: [ { code: 'asc' } ],
+            ...(typeof skip === 'number' && !cursorFilter ? { skip } : {}),
+            take: take + 1,
+            where: finalWhere,
+            orderBy,
             include: {
                 owner: {
                     select: { id: true, email: true, role: true },
                 },
             },
+        }).then((itemsPlus) => {
+            const hasMore = itemsPlus.length > take;
+            const items = hasMore ? itemsPlus.slice(0, take) : itemsPlus;
+            const nextCursor = hasMore ? this.encodeCursor(items[items.length - 1]) : null;
+            return { items, nextCursor };
         });
+    }
+
+    private encodeCursor(control: { code: string; id: string }) {
+        const raw = `${control.code}|${control.id}`;
+        return Buffer.from(raw, 'utf8').toString('base64url');
+    }
+
+    private decodeCursor(cursor: string): { code: string; id: string } {
+        const raw = Buffer.from(cursor, 'base64url').toString('utf8');
+        const [ code, id ] = raw.split('|');
+        if (!code || !id) {
+            throw new Error('Invalid cursor');
+        }
+        return { code, id };
+    }
+
+    private buildCursorWhere(cursor: string, dir: 'asc' | 'desc'): Prisma.ControlWhereInput {
+        const decoded = this.decodeCursor(cursor);
+        const operator = dir === 'desc' ? 'lt' : 'gt';
+
+        return {
+            OR: [
+                { code: { [operator]: decoded.code } },
+                { code: decoded.code, id: { [operator]: decoded.id } },
+            ],
+        };
     }
 
     async findOne(id: string) {
@@ -65,6 +139,22 @@ export class ControlsService {
             include: {
                 owner: {
                     select: { id: true, email: true, role: true },
+                },
+                risks: {
+                    include: {
+                        risk: {
+                            select: {
+                                id: true,
+                                title: true,
+                                description: true,
+                                status: true,
+                                severity: true,
+                                likelihood: true,
+                                impact: true,
+                                owner: { select: { id: true, email: true, role: true } },
+                            },
+                        },
+                    },
                 },
             },
         });
@@ -283,3 +373,4 @@ export class ControlsService {
     }
 
 }
+

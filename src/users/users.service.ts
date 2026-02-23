@@ -19,7 +19,7 @@ export class UsersService {
     }
 
     findAuthUserByEmail(email: string) {
-        return this.prisma.user.findUnique({ where: { email } }); // inkl passwordHash
+        return this.prisma.user.findUnique({ where: { email } });
     }
 
     findPublicUserById(id: string) {

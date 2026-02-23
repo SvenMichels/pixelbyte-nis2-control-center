@@ -1,12 +1,14 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { RequestUser } from '../auth/types/request-user';
 import { ReadinessByCategoryDto } from '../nis2/dto/readiness-by-category.dto';
 import { ReadinessResponseDto } from '../nis2/dto/readiness-response.dto';
 import { ControlsService } from './controls.service';
 import { CreateControlDto } from './dto/create-control.dto';
+import { ControlsQueryDto } from './dto/controls-query.dto';
 import { UpdateControlStatusDto } from './dto/update-control-status.dto';
 
 @ApiTags('controls')
@@ -31,8 +33,9 @@ export class ControlsController {
 
     @Get()
     @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR)
-    findAll() {
-        return this.controls.findAll();
+    @ApiOkResponse({ description: 'Controls list with cursor pagination.' })
+    findAll(@Query() query: ControlsQueryDto) {
+        return this.controls.findAll(query);
     }
 
     @Get(':id')
@@ -43,7 +46,7 @@ export class ControlsController {
 
     @Post()
     @Auth(Role.ADMIN)
-    create(@Body() dto: CreateControlDto, @CurrentUser() user: any) {
+    create(@Body() dto: CreateControlDto, @CurrentUser() user: RequestUser) {
         return this.controls.create(dto, user.id);
     }
 
@@ -52,7 +55,7 @@ export class ControlsController {
     updateStatus(
       @Param('id') id: string,
       @Body() dto: UpdateControlStatusDto,
-      @CurrentUser() user: any,
+      @CurrentUser() user: RequestUser,
     ) {
         return this.controls.updateStatus(id, dto.status, user.id);
     }
