@@ -18,28 +18,28 @@ export class ControlsController {
     }
 
     @Get('readiness')
-    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR)
+    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR, Role.USER)
     @ApiOkResponse({ type: ReadinessResponseDto })
     getReadiness(): Promise<ReadinessResponseDto> {
         return this.controls.getReadiness();
     }
 
     @Get('readiness/categories')
-    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR)
+    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR, Role.USER)
     @ApiOkResponse({ type: [ ReadinessByCategoryDto ] })
     getReadinessByCategory(): Promise<ReadinessByCategoryDto[]> {
         return this.controls.getReadinessByCategory();
     }
 
     @Get()
-    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR)
+    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR, Role.USER)
     @ApiOkResponse({ description: 'Controls list with cursor pagination.' })
     findAll(@Query() query: ControlsQueryDto) {
         return this.controls.findAll(query);
     }
 
     @Get(':id')
-    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR)
+    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR, Role.USER)
     findOne(@Param('id') id: string) {
         return this.controls.findOne(id);
     }
@@ -67,7 +67,7 @@ export class ControlsController {
     }
 
     @Get(':id/audit')
-    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR)
+    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR, Role.USER)
     getAudit(@Param('id') id: string) {
         return this.controls.getAuditForControl(id);
     }

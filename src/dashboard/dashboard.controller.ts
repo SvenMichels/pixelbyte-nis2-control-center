@@ -42,7 +42,7 @@ export class DashboardController {
     constructor(private readonly prisma: PrismaService) {}
 
     @Get('stats')
-    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR)
+    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR, Role.USER)
     @ApiOkResponse({ description: 'Dashboard statistics' })
     async getStats(): Promise<DashboardStats> {
         // Controls Stats

@@ -21,13 +21,13 @@ export class RisksController {
     ) {}
 
     @Get()
-    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR)
+    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR, Role.USER)
     findAll(@Query() query: RisksQueryDto) {
         return this.risks.findAll(query);
     }
 
     @Get(':id')
-    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR)
+    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR, Role.USER)
     findOne(@Param('id') id: string) {
         return this.risks.findOne(id);
     }
@@ -61,7 +61,7 @@ export class RisksController {
     }
 
     @Get(':id/audit')
-    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR)
+    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR, Role.USER)
     getAudit(@Param('id') id: string, @Query() query: AuditEventsQueryDto) {
         return this.audit.findEvents({ ...query, riskId: id });
     }
@@ -87,7 +87,7 @@ export class RisksController {
     }
 
     @Get(':id/controls')
-    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR)
+    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR, Role.USER)
     getLinkedControls(@Param('id') id: string) {
         return this.risks.getLinkedControls(id);
     }

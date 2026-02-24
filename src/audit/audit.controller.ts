@@ -12,14 +12,14 @@ export class AuditController {
     }
 
     @Get('events')
-    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR)
+    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR, Role.USER)
     @ApiOkResponse({ description: 'Audit events with filtering + cursor pagination.' })
     findEvents(@Query() query: AuditEventsQueryDto) {
         return this.auditService.findEvents(query);
     }
 
     @Get('recent')
-    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR)
+    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR, Role.USER)
     @ApiOkResponse({ description: 'Recent audit events for dashboard.' })
     getRecentEvents(@Query('take') take?: number, @Query('cursor') cursor?: string) {
         const limit = take && take > 0 && take <= 100 ? take : 25;

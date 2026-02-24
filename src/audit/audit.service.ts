@@ -81,6 +81,11 @@ export class AuditService {
                 { id: 'desc' },
             ],
             take: limit + 1,
+            include: {
+                actor: {
+                    select: { id: true, email: true, role: true },
+                },
+            },
         });
 
         const hasMore = itemsPlus.length > limit;
@@ -100,6 +105,11 @@ export class AuditService {
                 { createdAt: 'desc' },
                 { id: 'desc' },
             ],
+            include: {
+                actor: {
+                    select: { id: true, email: true, role: true },
+                },
+            },
         });
     }
 

@@ -12,7 +12,7 @@ export class Nis2Controller {
     }
 
     @Get('readiness')
-    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR)
+    @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR, Role.USER)
     @ApiOkResponse({ type: ReadinessResponseDto })
     readiness(): Promise<ReadinessResponseDto> {
         return this.nis2.getReadiness();
