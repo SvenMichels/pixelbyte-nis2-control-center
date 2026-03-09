@@ -1,12 +1,28 @@
 ﻿import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { BadRequestException, Logger, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import type { ValidationError } from 'class-validator';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
+function flattenValidationErrors(errors: ValidationError[]): string[] {
+    const messages: string[] = [];
+    for (const err of errors) {
+        if (err.constraints) {
+            messages.push(...Object.values(err.constraints));
+        }
+        if (err.children?.length) {
+            messages.push(...flattenValidationErrors(err.children));
+        }
+    }
+    return messages;
+}
+
 async function bootstrap() {
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create(AppModule, {
+        logger: ['error', 'warn', 'log'],
+    });
     app.use(helmet());
     app.enableCors({
         origin: process.env.CORS_ORIGIN ?? 'http://localhost:4200',
@@ -18,6 +34,14 @@ async function bootstrap() {
           whitelist: true,
           transform: true,
           forbidNonWhitelisted: true,
+          exceptionFactory: (errors) => {
+              const messages = flattenValidationErrors(errors);
+              return new BadRequestException({
+                  statusCode: 400,
+                  error: 'Validierungsfehler',
+                  message: messages,
+              });
+          },
       }),
     );
 
@@ -36,6 +60,9 @@ async function bootstrap() {
             swaggerOptions: { persistAuthorization: true },
         });
     }
-    await app.listen(process.env.PORT ?? 3000);
+
+    const port = process.env.PORT ?? 3000;
+    await app.listen(port);
+    Logger.log(`Server läuft auf Port ${port}`, 'Bootstrap');
 }
 bootstrap();
