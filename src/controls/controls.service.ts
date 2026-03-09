@@ -1,6 +1,7 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { AuditAction, AuditEntityType, ControlStatus, Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
+import { BusinessConflictException, ResourceNotFoundException } from '../common/exceptions';
 import { ReadinessByCategoryDto } from '../nis2/dto/readiness-by-category.dto';
 import { ReadinessBreakdownDto, ReadinessByStatusDto, ReadinessResponseDto } from '../nis2/dto/readiness-response.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -43,7 +44,7 @@ export class ControlsService {
             });
         } catch (error) {
             if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-                throw new ConflictException('Control code already exists');
+                throw new BusinessConflictException('Ein Control mit diesem Code existiert bereits.');
             }
             throw error;
         }
@@ -159,7 +160,7 @@ export class ControlsService {
             },
         });
 
-        if (!control) throw new NotFoundException('Control not found');
+        if (!control) throw new ResourceNotFoundException('Control', id);
         return control;
     }
 
@@ -169,7 +170,7 @@ export class ControlsService {
                 where: { id },
                 select: { id: true, status: true },
             });
-            if (!before) throw new NotFoundException('Control not found');
+            if (!before) throw new ResourceNotFoundException('Control', id);
 
             const updated = await tx.control.update({
                 where: { id },

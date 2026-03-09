@@ -1,6 +1,7 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { AuditAction, AuditEntityType, EvidenceType, Prisma } from '@prisma/client';
 import { AuditService } from '../../audit/audit.service';
+import { BusinessValidationException, ResourceNotFoundException } from '../../common/exceptions';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateEvidenceDto } from './dto/create-evidence.dto';
 
@@ -65,7 +66,7 @@ export class ControlsEvidenceService {
                 select: { id: true, type: true, note: true, link: true },
             });
 
-            if (!ev) throw new NotFoundException('Evidence not found');
+            if (!ev) throw new ResourceNotFoundException('Evidence', evidenceId);
 
             await tx.controlEvidence.delete({ where: { id: evidenceId } });
 
@@ -114,10 +115,10 @@ export class ControlsEvidenceService {
 
     private validate(dto: CreateEvidenceDto) {
         if (dto.type === EvidenceType.NOTE && !dto.note?.trim()) {
-            throw new BadRequestException('note is required when type=NOTE');
+            throw new BusinessValidationException('Eine Notiz ist erforderlich, wenn der Typ "NOTE" ist.');
         }
         if (dto.type === EvidenceType.LINK && !dto.link?.trim()) {
-            throw new BadRequestException('link is required when type=LINK');
+            throw new BusinessValidationException('Ein Link ist erforderlich, wenn der Typ "LINK" ist.');
         }
     }
 
@@ -126,7 +127,7 @@ export class ControlsEvidenceService {
             where: { id: controlId },
             select: { id: true },
         });
-        if (!exists) throw new NotFoundException('Control not found');
+        if (!exists) throw new ResourceNotFoundException('Control', controlId);
     }
 
     private async ensureControlExistsTx(tx: Prisma.TransactionClient, controlId: string) {
@@ -134,7 +135,7 @@ export class ControlsEvidenceService {
             where: { id: controlId },
             select: { id: true },
         });
-        if (!exists) throw new NotFoundException('Control not found');
+        if (!exists) throw new ResourceNotFoundException('Control', controlId);
     }
 
     private truncate(value: string, max: number) {

@@ -1,6 +1,7 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Prisma, Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { BusinessConflictException, BusinessValidationException, ResourceNotFoundException } from '../common/exceptions';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 
@@ -39,11 +40,11 @@ export class UsersService {
 
     async updateUser(id: string, dto: UpdateUserDto, _ctx: { isAdmin: boolean; isSelf: boolean }) {
         if (!dto.email && !dto.password) {
-            throw new BadRequestException('No fields to update');
+            throw new BusinessValidationException('Es wurden keine Felder zum Aktualisieren übermittelt.');
         }
 
         const existing = await this.prisma.user.findUnique({ where: { id } });
-        if (!existing) throw new NotFoundException('User not found');
+        if (!existing) throw new ResourceNotFoundException('Benutzer', id);
 
         const data: Prisma.UserUpdateInput = {};
 
@@ -58,7 +59,7 @@ export class UsersService {
             });
         } catch (error) {
             if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-                throw new ConflictException('Email already in use');
+                throw new BusinessConflictException('Diese E-Mail-Adresse wird bereits verwendet.');
             }
             throw error;
         }

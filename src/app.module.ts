@@ -1,13 +1,16 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { CsrfGuard } from './auth/csrf.guard';
+import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { ControlsModule } from './controls/controls.module';
+// ...existing code...
 import { ControlsEvidenceModule } from './controls/evidence/controls-evidence.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { DocsModule } from './docs/docs.module';
@@ -48,6 +51,14 @@ import { UsersModule } from './users/users.module';
     controllers: [ AppController ],
     providers: [
         AppService,
+        {
+            provide: APP_FILTER,
+            useClass: GlobalExceptionFilter,
+        },
+        {
+            provide: APP_INTERCEPTOR,
+            useClass: LoggingInterceptor,
+        },
         {
             provide: APP_GUARD,
             useClass: ThrottlerGuard,

@@ -1,9 +1,10 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import type { StringValue } from 'ms';
+import { BusinessConflictException } from '../common/exceptions';
 import { UsersService } from '../users/users.service';
 
 @Injectable()
@@ -16,17 +17,17 @@ export class AuthService {
 
     async login(email: string, password: string) {
         const user = await this.users.findAuthUserByEmail(email);
-        if (!user) throw new UnauthorizedException('Invalid credentials');
+        if (!user) throw new UnauthorizedException('E-Mail-Adresse oder Passwort ist falsch.');
 
         const ok = await bcrypt.compare(password, user.passwordHash);
-        if (!ok) throw new UnauthorizedException('Invalid credentials');
+        if (!ok) throw new UnauthorizedException('E-Mail-Adresse oder Passwort ist falsch.');
 
         return this.issueTokens(user.id, user.email, user.role as Role);
     }
 
     async register(email: string, password: string) {
         const existing = await this.users.findAuthUserByEmail(email);
-        if (existing) throw new ConflictException('Email already in use');
+        if (existing) throw new BusinessConflictException('Diese E-Mail-Adresse wird bereits verwendet.');
 
         const passwordHash = await bcrypt.hash(password, 12);
         const user = await this.users.createUser(email, passwordHash);
@@ -41,11 +42,11 @@ export class AuthService {
             });
 
             const user = await this.users.findPublicUserById(payload.sub);
-            if (!user) throw new UnauthorizedException('User not found');
+            if (!user) throw new UnauthorizedException('Benutzer wurde nicht gefunden.');
 
             return this.issueTokens(user.id, user.email, user.role as Role);
         } catch {
-            throw new UnauthorizedException('Invalid refresh token');
+            throw new UnauthorizedException('Sitzung abgelaufen. Bitte erneut anmelden.');
         }
     }
 

@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { AuditAction, AuditEntityType, RiskStatus, Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
+import { BusinessConflictException, ResourceNotFoundException } from '../common/exceptions';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRiskDto } from './dto/create-risk.dto';
 import { UpdateRiskDto } from './dto/update-risk.dto';
@@ -132,7 +133,7 @@ export class RisksService {
             },
         });
 
-        if (!risk) throw new NotFoundException('Risk not found');
+        if (!risk) throw new ResourceNotFoundException('Risk', id);
         return risk;
     }
 
@@ -141,7 +142,7 @@ export class RisksService {
             const before = await tx.risk.findUnique({
                 where: { id },
             });
-            if (!before) throw new NotFoundException('Risk not found');
+            if (!before) throw new ResourceNotFoundException('Risk', id);
 
             const risk = await tx.risk.update({
                 where: { id },
@@ -196,7 +197,7 @@ export class RisksService {
                 where: { id },
                 select: { id: true, status: true },
             });
-            if (!before) throw new NotFoundException('Risk not found');
+            if (!before) throw new ResourceNotFoundException('Risk', id);
 
             const risk = await tx.risk.update({
                 where: { id },
@@ -225,23 +226,20 @@ export class RisksService {
 
     async remove(id: string) {
         const risk = await this.prisma.risk.findUnique({ where: { id } });
-        if (!risk) throw new NotFoundException('Risk not found');
+        if (!risk) throw new ResourceNotFoundException('Risk', id);
 
         await this.prisma.risk.delete({ where: { id } });
-        return { message: 'Risk deleted successfully' };
+        return { ok: true, deletedId: id };
     }
 
     async linkControl(riskId: string, controlId: string, actorId?: string) {
         return this.prisma.$transaction(async (tx) => {
-            // Check if risk exists
             const risk = await tx.risk.findUnique({ where: { id: riskId } });
-            if (!risk) throw new NotFoundException('Risk not found');
+            if (!risk) throw new ResourceNotFoundException('Risk', riskId);
 
-            // Check if control exists
             const control = await tx.control.findUnique({ where: { id: controlId } });
-            if (!control) throw new NotFoundException('Control not found');
+            if (!control) throw new ResourceNotFoundException('Control', controlId);
 
-            // Check if already linked
             const existing = await tx.riskControl.findUnique({
                 where: {
                     riskId_controlId: { riskId, controlId },
@@ -249,7 +247,7 @@ export class RisksService {
             });
 
             if (existing) {
-                throw new Error('Risk and Control are already linked');
+                throw new BusinessConflictException('Risk und Control sind bereits verknüpft.');
             }
 
             // Create link
@@ -277,7 +275,6 @@ export class RisksService {
 
     async unlinkControl(riskId: string, controlId: string, actorId?: string) {
         return this.prisma.$transaction(async (tx) => {
-            // Check if link exists
             const link = await tx.riskControl.findUnique({
                 where: {
                     riskId_controlId: { riskId, controlId },
@@ -290,17 +287,15 @@ export class RisksService {
             });
 
             if (!link) {
-                throw new NotFoundException('Link not found');
+                throw new ResourceNotFoundException('Risk-Control-Verknüpfung');
             }
 
-            // Delete link
             await tx.riskControl.delete({
                 where: {
                     riskId_controlId: { riskId, controlId },
                 },
             });
 
-            // Log audit event
             await this.audit.logWith(tx, {
                 action: AuditAction.RISK_CONTROL_UNLINKED,
                 entityType: AuditEntityType.RISK,
@@ -336,7 +331,7 @@ export class RisksService {
             },
         });
 
-        if (!risk) throw new NotFoundException('Risk not found');
+        if (!risk) throw new ResourceNotFoundException('Risk', riskId);
 
         return risk.controls.map((rc) => rc.control);
     }
