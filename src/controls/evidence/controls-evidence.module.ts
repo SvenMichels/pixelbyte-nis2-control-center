@@ -7,7 +7,7 @@ import { ControlsEvidenceService } from './controls-evidence.service';
 @Module({
     imports: [
         PrismaModule,
-        AuditModule, // ✅ das ist der Fix
+        AuditModule,
     ],
     controllers: [ ControlsEvidenceController ],
     providers: [ ControlsEvidenceService ],

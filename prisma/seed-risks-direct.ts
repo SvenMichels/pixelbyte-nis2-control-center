@@ -120,7 +120,7 @@ async function main() {
       risks.map((risk) => prisma.risk.create({ data: risk })),
     );
 
-    console.log(`  ✅ Created ${createdRisks.length} risks`);
+    console.log(`  Created ${createdRisks.length} risks`);
 
     if (controls.length > 0) {
         const mappings: Array<{ riskId: string; controlId: string }> = [];
@@ -203,7 +203,7 @@ async function main() {
             const availableControls = controls.filter(c =>
               !mappings.some(m => m.controlId === c.id && m.riskId === risk.id),
             );
-            const numMappings = index % 3 === 0 ? 0 : (index % 2 === 0 ? 1 : 2); // Mix: some without, some with 1-2
+            const numMappings = index % 3 === 0 ? 0 : (index % 2 === 0 ? 1 : 2);
             availableControls.slice(0, numMappings).forEach(control => {
                 mappings.push({ riskId: risk.id, controlId: control.id });
             });
@@ -214,20 +214,20 @@ async function main() {
                 data: mappings,
                 skipDuplicates: true,
             });
-            console.log(`  ✅ Created ${mappings.length} risk-control mappings`);
+            console.log(`  Created ${mappings.length} risk-control mappings`);
         }
 
         const risksWithMappings = [ ...new Set(mappings.map(m => m.riskId)) ].length;
         const risksWithoutMitigationsCount = createdRisks.length - risksWithMappings;
 
-        console.log(`  📊 Stats:`);
+        console.log(`  Stats:`);
         console.log(`     - Risks with mitigations: ${risksWithMappings}`);
         console.log(`     - Risks without mitigations: ${risksWithoutMitigationsCount}`);
     } else {
-        console.log(`  ⚠️  No controls found, skipping risk-control mappings`);
+        console.log(`  No controls found, skipping risk-control mappings`);
     }
 
-    console.log('  🎉 Risk seeding complete!');
+    console.log('  Risk seeding complete.');
 }
 
 main()
