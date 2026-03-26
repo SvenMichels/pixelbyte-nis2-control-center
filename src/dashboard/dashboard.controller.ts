@@ -1,6 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { ControlStatus, Role, RiskStatus } from '@prisma/client';
+import { ControlStatus, IncidentStatus, Role, RiskStatus } from '@prisma/client';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -34,6 +34,13 @@ interface DashboardStats {
         totalEvents: number;
         last24h: number;
     };
+    incidents: {
+        total: number;
+        byStatus: Record<string, number>;
+        bySeverity: Record<string, number>;
+        open: number;
+        resolved: number;
+    };
 }
 
 @ApiTags('dashboard')
@@ -45,7 +52,6 @@ export class DashboardController {
     @Auth(Role.ADMIN, Role.SECURITY, Role.AUDITOR, Role.USER)
     @ApiOkResponse({ description: 'Dashboard statistics' })
     async getStats(): Promise<DashboardStats> {
-        // Controls Stats
         const controls = await this.prisma.control.findMany({
             include: {
                 controlEvidences: {
@@ -64,7 +70,6 @@ export class DashboardController {
           ? Math.round((controlsWithEvidence / controls.length) * 100)
           : 0;
 
-        // Risks Stats
         const risks = await this.prisma.risk.findMany({
             include: {
                 controls: {
@@ -97,7 +102,6 @@ export class DashboardController {
             else if (score >= 7) risksByLevel.medium++;
             else risksByLevel.low++;
 
-            // Track risks without mitigations
             if (r.controls.length === 0) {
                 risksWithoutMitigations++;
                 if (level === 'critical' || level === 'high') {
@@ -106,7 +110,6 @@ export class DashboardController {
             }
         });
 
-        // Top 5 Risks by score
         const topRisks = risks
           .map(r => ({
               id: r.id,
@@ -118,7 +121,6 @@ export class DashboardController {
           .sort((a, b) => b.score - a.score)
           .slice(0, 5);
 
-        // Audit Stats
         const totalEvents = await this.prisma.auditEvent.count();
         const last24h = await this.prisma.auditEvent.count({
             where: {
@@ -127,6 +129,30 @@ export class DashboardController {
                 },
             },
         });
+
+        const incidents = await this.prisma.incident.findMany({
+            select: { status: true, severity: true },
+        });
+
+        const incidentsByStatus = incidents.reduce((acc, i) => {
+            acc[i.status] = (acc[i.status] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>);
+
+        const incidentsBySeverity = incidents.reduce((acc, i) => {
+            acc[i.severity] = (acc[i.severity] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>);
+
+        const openStatuses: string[] = [
+            IncidentStatus.DETECTED,
+            IncidentStatus.ANALYSING,
+            IncidentStatus.CONTAINED,
+        ];
+        const openIncidents = incidents.filter(i => openStatuses.includes(i.status)).length;
+        const resolvedIncidents = incidents.filter(i =>
+            i.status === IncidentStatus.RESOLVED || i.status === IncidentStatus.CLOSED,
+        ).length;
 
         return {
             controls: {
@@ -146,6 +172,13 @@ export class DashboardController {
             audit: {
                 totalEvents,
                 last24h,
+            },
+            incidents: {
+                total: incidents.length,
+                byStatus: incidentsByStatus,
+                bySeverity: incidentsBySeverity,
+                open: openIncidents,
+                resolved: resolvedIncidents,
             },
         };
     }

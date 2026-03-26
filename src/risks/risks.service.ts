@@ -250,12 +250,10 @@ export class RisksService {
                 throw new BusinessConflictException('Risk und Control sind bereits verknüpft.');
             }
 
-            // Create link
             await tx.riskControl.create({
                 data: { riskId, controlId },
             });
 
-            // Log audit event
             await this.audit.logWith(tx, {
                 action: AuditAction.RISK_CONTROL_LINKED,
                 entityType: AuditEntityType.RISK,

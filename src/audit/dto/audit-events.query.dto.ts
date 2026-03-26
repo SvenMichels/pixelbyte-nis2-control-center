@@ -14,6 +14,11 @@ export class AuditEventsQueryDto {
     @IsString()
     riskId?: string;
 
+    @ApiPropertyOptional({ description: 'Filter by incidentId' })
+    @IsOptional()
+    @IsString()
+    incidentId?: string;
+
     @ApiPropertyOptional({ enum: AuditEntityType, description: 'Filter by entity type (requires entityId)' })
     @IsOptional()
     @IsEnum(AuditEntityType)

@@ -10,10 +10,10 @@ import { CsrfGuard } from './auth/csrf.guard';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { ControlsModule } from './controls/controls.module';
-// ...existing code...
 import { ControlsEvidenceModule } from './controls/evidence/controls-evidence.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { DocsModule } from './docs/docs.module';
+import { HealthModule } from './health/health.module';
 import { IncidentsModule } from './incidents/incidents.module';
 import { Nis2Module } from './nis2/nis2.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -47,6 +47,7 @@ import { UsersModule } from './users/users.module';
         ControlsEvidenceModule,
         AuditModule,
         DashboardModule,
+        HealthModule,
     ],
     controllers: [ AppController ],
     providers: [
