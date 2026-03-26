@@ -4,6 +4,8 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { seedAuditEvents } from './seed/audit.seed';
 import { seedControls } from './seed/controls.seed';
 import { seedControlEvidence } from './seed/evidence.seed';
+import { seedIncidentControls } from './seed/incident-controls.seed';
+import { seedIncidents } from './seed/incidents.seed';
 import { seedRiskControls } from './seed/risk-controls.seed';
 import { seedRisks } from './seed/risks.seed';
 import { seedUsers } from './seed/users.seed';
@@ -26,6 +28,12 @@ async function seed() {
 
     console.log('Seeding control evidence...');
     await seedControlEvidence(prisma);
+
+    console.log('Seeding incidents...');
+    await seedIncidents(prisma);
+
+    console.log('Seeding incident-control mappings...');
+    await seedIncidentControls(prisma);
 
     console.log('Seeding audit events...');
     await seedAuditEvents(prisma);

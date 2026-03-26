@@ -16,6 +16,7 @@ const ACTIONS_BY_ENTITY: Record<AuditEntityType, AuditAction[]> = {
     CONTROL: [ AuditAction.CREATED, AuditAction.STATUS_CHANGED, AuditAction.UPDATED ],
     EVIDENCE: [ AuditAction.EVIDENCE_CREATED, AuditAction.EVIDENCE_DELETED ],
     RISK: [ AuditAction.CREATED, AuditAction.UPDATED, AuditAction.RISK_CONTROL_LINKED ],
+    INCIDENT: [ AuditAction.CREATED, AuditAction.STATUS_CHANGED, AuditAction.INCIDENT_REPORTED, AuditAction.INCIDENT_RESOLVED ],
 };
 
 const CONTROL_STATUS_FLOW: ControlStatus[] = [
@@ -229,6 +230,75 @@ export async function seedAuditEvents(prisma: PrismaClient) {
                     reason: 'Outdated evidence replaced',
                     before: { type: evidence.type },
                     after: null,
+                },
+            });
+        }
+    });
+
+    const incidents = await prisma.incident.findMany({
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, title: true, status: true, severity: true },
+    });
+
+    const INCIDENT_STATUS_FLOW = [
+        'DETECTED', 'ANALYSING', 'CONTAINED', 'RESOLVED', 'CLOSED',
+        'REPORTED_24H', 'REPORTED_72H', 'REPORT_FINAL',
+    ];
+
+    incidents.forEach((incident, index) => {
+        const actor = pickActor(actors, index + 100);
+        const actions = ACTIONS_BY_ENTITY.INCIDENT;
+        const metaBase = baseMeta(index + 100, actor);
+
+        audits.push({
+            action: actions[0],
+            entityType: AuditEntityType.INCIDENT,
+            entityId: incident.id,
+            actorId: actor?.id ?? null,
+            meta: {
+                ...metaBase,
+                title: incident.title,
+                severity: incident.severity,
+                status: incident.status,
+            },
+        });
+
+        if (incident.status !== 'DETECTED') {
+            audits.push({
+                action: AuditAction.STATUS_CHANGED,
+                entityType: AuditEntityType.INCIDENT,
+                entityId: incident.id,
+                actorId: actor?.id ?? null,
+                meta: {
+                    ...metaBase,
+                    before: { status: 'DETECTED' },
+                    after: { status: incident.status },
+                },
+            });
+        }
+
+        if (incident.status === 'RESOLVED' || incident.status === 'CLOSED') {
+            audits.push({
+                action: AuditAction.INCIDENT_RESOLVED,
+                entityType: AuditEntityType.INCIDENT,
+                entityId: incident.id,
+                actorId: actor?.id ?? null,
+                meta: {
+                    ...metaBase,
+                    resolvedStatus: incident.status,
+                },
+            });
+        }
+
+        if (incident.status === 'REPORTED_24H' || incident.status === 'REPORTED_72H' || incident.status === 'REPORT_FINAL') {
+            audits.push({
+                action: AuditAction.INCIDENT_REPORTED,
+                entityType: AuditEntityType.INCIDENT,
+                entityId: incident.id,
+                actorId: actor?.id ?? null,
+                meta: {
+                    ...metaBase,
+                    reportType: incident.status,
                 },
             });
         }
