@@ -1,10 +1,11 @@
-import { Body, Controller, Delete, ForbiddenException, Get, Param, Patch } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, Param, Patch, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { Authenticated } from '../auth/decorators/authenticated.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { RequestUser } from '../auth/types/request-user';
+import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
 
@@ -37,6 +38,12 @@ export class UsersController {
     @Auth(Role.ADMIN)
     findAll() {
         return this.users.findAll();
+    }
+
+    @Post()
+    @Auth(Role.ADMIN)
+    create(@Body() dto: CreateUserDto) {
+        return this.users.adminCreateUser(dto);
     }
 
     @Delete(':id')

@@ -3,6 +3,7 @@ import { Prisma, Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { BusinessConflictException, BusinessValidationException, ResourceNotFoundException } from '../common/exceptions';
 import { PrismaService } from '../prisma/prisma.service';
+import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
@@ -38,9 +39,13 @@ export class UsersService {
         return this.prisma.user.create({ data: { email, passwordHash, role } });
     }
 
-    async updateUser(id: string, dto: UpdateUserDto, _ctx: { isAdmin: boolean; isSelf: boolean }) {
-        if (!dto.email && !dto.password) {
+    async updateUser(id: string, dto: UpdateUserDto, ctx: { isAdmin: boolean; isSelf: boolean }) {
+        if (!dto.email && !dto.password && !dto.role) {
             throw new BusinessValidationException('Es wurden keine Felder zum Aktualisieren übermittelt.');
+        }
+
+        if (dto.role && !ctx.isAdmin) {
+            throw new BusinessValidationException('Nur Administratoren dürfen Rollen ändern.');
         }
 
         const existing = await this.prisma.user.findUnique({ where: { id } });
@@ -50,6 +55,7 @@ export class UsersService {
 
         if (dto.email) data.email = dto.email;
         if (dto.password) data.passwordHash = await bcrypt.hash(dto.password, 12);
+        if (dto.role && ctx.isAdmin) data.role = dto.role;
 
         try {
             return await this.prisma.user.update({
@@ -64,6 +70,21 @@ export class UsersService {
             throw error;
         }
 
+    }
+
+    async adminCreateUser(dto: CreateUserDto) {
+        const existing = await this.findAuthUserByEmail(dto.email);
+        if (existing) throw new BusinessConflictException('Diese E-Mail-Adresse wird bereits verwendet.');
+
+        const passwordHash = await bcrypt.hash(dto.password, 12);
+        return this.prisma.user.create({
+            data: {
+                email: dto.email,
+                passwordHash,
+                role: dto.role ?? Role.USER,
+            },
+            select: this.safeUserSelect,
+        });
     }
 
     async remove(id: string) {
